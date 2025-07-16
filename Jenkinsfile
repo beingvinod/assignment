@@ -20,7 +20,7 @@ pipeline {
         stage('Code Quality - SonarQube') {
             steps {
                 echo "🧪 Running SonarQube analysis..."
-                withSonarQubeEnv('SonarQube') {
+                withSonarQubeEnv('sonarqube') {
                     withCredentials([string(credentialsId: 'SONAR_AUTH_TOKEN', variable: 'SONAR_AUTH_TOKEN')]) {
                         sh '''
                             mvn sonar:sonar \
