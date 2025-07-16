@@ -10,12 +10,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/beingvinod/assignment.git'
-            }
-        }
-
         stage('Build') {
             steps {
                 sh 'mvn clean install'
