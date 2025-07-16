@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        maven 'M3'
+        maven 'M3' // Make sure Jenkins has this Maven tool configured as 'M3'
     }
 
     environment {
@@ -12,18 +12,20 @@ pipeline {
     stages {
         stage('Build') {
             steps {
+                echo "🔧 Building Maven Project..."
                 sh 'mvn clean install'
             }
         }
 
         stage('Code Quality - SonarQube') {
             steps {
-                withSonarQubeEnv('sonarqube') {
+                echo "🧪 Running SonarQube analysis..."
+                withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_AUTH_TOKEN', variable: 'SONAR_AUTH_TOKEN')]) {
                         sh '''
                             mvn sonar:sonar \
                             -Dsonar.projectKey=assignment-project \
-                            -Dsonar.host.url=http://51.20.132.61:9000 \
+                            -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.login=$SONAR_AUTH_TOKEN
                         '''
                     }
@@ -33,10 +35,27 @@ pipeline {
 
         stage('SonarQube Quality Gate') {
             steps {
-                timeout(time: 1, unit: 'MINUTES') {
+                echo "🚦 Waiting for SonarQube Quality Gate result..."
+                timeout(time: 3, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning up workspace..."
+            cleanWs()
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Please check the logs."
+        }
+        aborted {
+            echo "⏰ Pipeline aborted due to timeout or manual stop."
         }
     }
 }
