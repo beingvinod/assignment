@@ -22,11 +22,19 @@
             <version>${spring.boot.version}</version>
         </dependency>
 
-        <!-- Spring Boot Starter Test (Optional) -->
+        <!-- Spring Boot Starter Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <version>${spring.boot.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit (explicit for AppTest.java) -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
