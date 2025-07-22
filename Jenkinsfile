@@ -1,61 +1,57 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'M3' // Jenkins tool name for Maven
-    }
-
     environment {
-        SONAR_SCANNER_OPTS = "-Xmx512m"
+        MAVEN_HOME = tool name: 'M3', type: 'maven'
+        SONARQUBE_ENV = 'sonar-qube'
+        DEPLOY_USER = 'ec2-user'
+        DEPLOY_HOST = '16.170.143.107'
+        DEPLOY_PATH = '/home/ec2-user/deploy'
     }
 
     stages {
-        stage('Build') {
+
+        stage('Checkout Code') {
             steps {
-                echo "🔧 Building the project..."
-                sh 'mvn clean install'
+                git branch: 'main', url: 'https://github.com/beingvinod/assignment.git'
             }
         }
 
-        stage('Code Quality - SonarQube') {
+        stage('Build with Maven') {
             steps {
-                echo "🧪 Analyzing code with SonarQube..."
-                withSonarQubeEnv('sonarqube') {
-                    withCredentials([string(credentialsId: 'SONAR_AUTH_TOKEN', variable: 'SONAR_AUTH_TOKEN')]) {
-                        sh '''
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=assignment-project \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN
-                        '''
-                    }
+                sh "${MAVEN_HOME}/bin/mvn clean install"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh "${MAVEN_HOME}/bin/mvn sonar:sonar"
                 }
             }
         }
 
-        stage('SonarQube Quality Gate') {
+        stage('Quality Gate') {
             steps {
-                echo "🚦 Waiting for Quality Gate result..."
-                timeout(time: 1, unit: 'MINUTES') {  // Increased timeout
+                timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-    }
 
-    post {
-        success {
-            echo "✅ Pipeline finished successfully!"
-        }
-        failure {
-            echo "❌ Pipeline failed. Check SonarQube & logs."
-        }
-        aborted {
-            echo "⏰ Pipeline aborted due to timeout or manual stop."
-        }
-        always {
-            echo "🧹 Cleaning workspace..."
-            cleanWs()
+        stage('Deploy to Server') {
+            steps {
+                sshagent(credentials: ['c498bb44-31de-4038-8c8c-0da05e8ce035']) {
+                    sh """
+                    mkdir -p ${DEPLOY_PATH}
+                    scp -o StrictHostKeyChecking=no target/*.jar ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} 'bash -s' <<'ENDSSH'
+                        pkill -f java || true
+                        nohup java -jar ${DEPLOY_PATH}/*.jar > app.log 2>&1 &
+                    ENDSSH
+                    """
+                }
+            }
         }
     }
 }
